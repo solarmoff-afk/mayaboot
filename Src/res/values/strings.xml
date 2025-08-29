@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">MayaBoot</string>
+    <string name="hello_world">Hello from Python Build Script!</string>
+</resources>
