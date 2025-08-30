@@ -21,6 +21,7 @@ import java.io.OutputStream;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.io.FileDescriptor;
+import java.io.PrintWriter;
 
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
@@ -29,6 +30,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.Arrays;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+
+import java.net.InetAddress;
+import java.net.ServerSocket;
+import java.net.Socket;
 
 public class OpenJDK {
     private static final String JAVA_EXECUTABLE_SUBPATH = "usr/bin/java";
@@ -47,21 +54,26 @@ public class OpenJDK {
     /*
         Устанавливает OpenJDK (копирует пакет из assets и распаковывает его в data/data)
     */
-    
+
     public static boolean install(Context context) {
         AssetManager assetManager = context.getAssets();
-        
+
+        File homeDir = new File(context.getFilesDir(), "home");
+        if (!homeDir.exists()) {
+            homeDir.mkdirs();
+        }
+
         String[] packageFiles = {"OpenJDK.pkg", "OpenJDK_lib.pkg"};
-        
+
         for (String packageFile : packageFiles) {
             File outFile = new File(context.getFilesDir(), packageFile.replace(".pkg", ".zip"));
-            
+
             try (InputStream inputStream = assetManager.open("packages/" + packageFile);
                 OutputStream outputStream = new FileOutputStream(outFile)) {
-                
+
                 byte[] buffer = new byte[8192];
                 int length;
-                
+
                 while ((length = inputStream.read(buffer)) > 0) {
                     outputStream.write(buffer, 0, length);
                 }
@@ -82,7 +94,7 @@ public class OpenJDK {
                 outFile.delete();
             }
         }
-        
+
         File javaExecutable = new File(context.getFilesDir(), JAVA_EXECUTABLE_SUBPATH);
         if (javaExecutable.exists()) {
             javaExecutable.setReadable(true, false);
@@ -103,9 +115,31 @@ public class OpenJDK {
             return false;
         }
 
+        /*
+            Наш тестовый джар - Это просто тест сокетов. Блоки
+            с ним скоро будет удалены. Мы будем брать dex2jar
+            чтобы превратить все дексы в классы и слить в 1
+            джар файл который мы будем использовать
+        */
+
+        try (InputStream in = context.getAssets().open("guest.jar");
+                OutputStream out = new FileOutputStream(new File(context.getFilesDir(), "home/guest.jar"))) {
+            byte[] buffer = new byte[1024];
+            int length;
+
+            while ((length = in.read(buffer)) > 0) {
+                out.write(buffer, 0, length);
+            }
+
+            Log.d(LOG_TAG, "Guest uspeshno skopirovan v home/");
+        } catch (IOException e) {
+            Log.e(LOG_TAG, "Guest.jar otkazalsa kopirovatsya, nu i poshel on", e);
+            return false;
+        }
+
         return true;
     }
-    
+
     /*
         Распаковывает zip-архив в указанную директорию
 
@@ -117,7 +151,7 @@ public class OpenJDK {
             ZipEntry zipEntry = zis.getNextEntry();
             while (zipEntry != null) {
                 File newFile = new File(destDirectory, zipEntry.getName());
-                
+
                 if (!newFile.getCanonicalPath().startsWith(destDirectory.getCanonicalPath() + File.separator)) {
                     throw new IOException("Zip Slip found, urod: " + zipEntry.getName());
                 }
@@ -128,17 +162,17 @@ public class OpenJDK {
                     }
                 } else {
                     File parent = newFile.getParentFile();
-                    
+
                     if (parent != null) {
                         if (!parent.isDirectory() && !parent.mkdirs()) {
                             throw new IOException("Failed create directory " + parent);
                         }
                     }
-                    
+
                     try (FileOutputStream fos = new FileOutputStream(newFile)) {
                         byte[] buffer = new byte[8192];
                         int len;
-                        
+
                         while ((len = zis.read(buffer)) > 0) {
                             fos.write(buffer, 0, len);
                         }
@@ -151,18 +185,84 @@ public class OpenJDK {
     }
 
     /*
-        Запускает джаву, метод блокирующий поэтому вызывать только в фоне
+        Код для того, что отправить "ping" в виртуалку где запущен
+        тестовый джарник. Если мы вернули pong - отлично
     */
 
     public static String run(Context context) {
         File appFilesDir = context.getFilesDir();
         File usrDir = new File(appFilesDir, "usr");
         File javaExecutable = new File(appFilesDir, JAVA_EXECUTABLE_SUBPATH);
+        File guestJar = new File(new File(appFilesDir, "home"), "guest.jar");
 
-        if (!javaExecutable.exists() || !javaExecutable.canExecute()) {
-            String errorMessage = "Error load: OpenJDK don't found or has no execution permissions.";
+        if (!javaExecutable.exists() || !guestJar.exists()) {
+            return "CRITICAL ERROR: OpenJDK or guest.jar not found. Please try reinstalling the application.";
+        }
+
+        if (!javaExecutable.exists() || !javaExecutable.canExecute() || !guestJar.exists()) {
+            String errorMessage = "Error load: OpenJDK/Guest.jar don't found or hasn't execution permissions.";
             Log.e(LOG_TAG, errorMessage);
             return errorMessage;
+        }
+        
+        /*
+            Небольшая пасхалОчка, android 1.0 был представлен
+            5 (05) ноября (11) 2007 года (7)
+
+            05117 - Дата рождения андроедика :3
+        */
+
+        final String[] guestResponse = {"NO_RESPONSE_YET"};
+        final int PORT = 05117;
+        final String HOST = "127.0.0.1";
+        final CountDownLatch serverReadyLatch = new CountDownLatch(1);
+
+        Thread serverThread = new Thread(() -> {
+            try (ServerSocket serverSocket = new ServerSocket(PORT, 1, InetAddress.getByName(HOST))) {
+                serverSocket.setSoTimeout(10000);
+                
+                Log.d(LOG_TAG, "SERVER: Waiting for connection on TCP " + HOST + ":" + PORT);
+                
+                serverReadyLatch.countDown();
+
+                try (Socket clientSocket = serverSocket.accept()) {
+                    Log.d(LOG_TAG, "SERVER: Client connected!");
+                    
+                    PrintWriter out = new PrintWriter(clientSocket.getOutputStream(), true);
+                    BufferedReader in = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+                    
+                    out.println("ping");
+                    guestResponse[0] = in.readLine();
+                    
+                    Log.d(LOG_TAG, "SERVER: Response received: '" + guestResponse[0] + "'");
+                }
+            } catch (Exception e) {
+                Log.e(LOG_TAG, "SERVER: Error!", e);
+                guestResponse[0] = "SERVER_ERROR: " + e.getMessage();
+                
+                if (serverReadyLatch.getCount() > 0) {
+                    serverReadyLatch.countDown();
+                }
+            }
+        });
+
+        /*
+            Запуск сервера. Он отправит клиету ping и будет ожидать
+            ответ pong
+        */
+
+        serverThread.start();
+
+        try {
+            if (!serverReadyLatch.await(5, TimeUnit.SECONDS)) {
+                return "FAIL: Server did not start in 5 seconds.";
+            }
+        } catch (InterruptedException e) {
+            return "FAIL: Interrupted while waiting for server.";
+        }
+        
+        if (guestResponse[0].startsWith("SERVER_ERROR")) {
+            return "FAIL! Server could not start: " + guestResponse[0];
         }
 
         Map<String, String> envMap = new HashMap<>();
@@ -177,7 +277,7 @@ public class OpenJDK {
         File termuxExecSo = new File(libDir, "libtermux-exec.so");
         envMap.put("LD_PRELOAD", termuxExecSo.getAbsolutePath());
         
-        String[] systemVarsToCopy = {
+         String[] systemVarsToCopy = {
             "ANDROID_ART_ROOT", "ANDROID_ASSETS", "ANDROID_DATA", "ANDROID_I18N_ROOT",
             "ANDROID_ROOT", "ANDROID_RUNTIME_ROOT", "ANDROID_STORAGE", "ANDROID_TZDATA_ROOT",
             "BOOTCLASSPATH", "DEX2OATBOOTCLASSPATH", "EXTERNAL_STORAGE", "SYSTEMSERVERCLASSPATH"
@@ -195,37 +295,38 @@ public class OpenJDK {
         String linkerPath = "/system/bin/linker" + (android.os.Process.is64Bit() ? "64" : "");
         commandList.add(linkerPath);
         commandList.add(javaExecutable.getAbsolutePath());
-        commandList.add("-version");
-
+        commandList.add("-jar");
+        commandList.add(guestJar.getAbsolutePath());
+        
+        int exitCode = -1;
+        StringBuilder guestProcessOutput = new StringBuilder();
+        
         try {
             ProcessBuilder pb = new ProcessBuilder(commandList);
             pb.environment().putAll(envMap);
             pb.redirectErrorStream(true);
 
-            Log.d(LOG_TAG, "STARTING FINAL, TRUE COMMAND: " + pb.command());
-            Log.d(LOG_TAG, "WITH TRUE ENVIRONMENT: " + pb.environment());
-
+            Log.d(LOG_TAG, "STARTING GUEST JAR COMMAND: " + pb.command());
             Process process = pb.start();
 
-            StringBuilder output = new StringBuilder();
             try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
                 String line;
                 while ((line = reader.readLine()) != null) {
-                    output.append(line).append("\n");
+                    guestProcessOutput.append(line).append("\n");
                 }
             }
-
-            int exitCode = process.waitFor();
-            Log.d(LOG_TAG, "Process finish with code: " + exitCode);
-
-            if (exitCode == 0) {
-                return output.toString();
-            } else {
-                return "Procces finish with error (code " + exitCode + ") ;( \n" + output.toString();
-            }
+            
+            exitCode = process.waitFor();
+            Log.d(LOG_TAG, "Guest process finished with code: " + exitCode);
         } catch (IOException | InterruptedException e) {
             Log.e(LOG_TAG, "Blyat kak ti umudrilsa etu huynyu poymat? Pizdet ti", e);
-            return "Errror in start procces block, Msg:\n" + e.getMessage();
+            return "Error in start procces block, Msg:\n" + e.getMessage();
+        }
+
+        if ("pong".equals(guestResponse[0])) {
+            return "Bridge is work"; 
+        } else {
+            return "Bridge don't work";    
         }
     }
 
@@ -245,7 +346,7 @@ public class OpenJDK {
             if (files != null) {
                 for (File file : files) {
                     String fileInfo = indent + "├── " + file.getName();
-                    
+
                     if (file.isDirectory()) {
                         fileInfo += " (dir)";
                     } else {
@@ -253,7 +354,7 @@ public class OpenJDK {
                     }
 
                     result.add(fileInfo);
-                    
+
                     if (file.isDirectory()) {
                         result.addAll(getFileTree(file, depth + 1));
                     }
