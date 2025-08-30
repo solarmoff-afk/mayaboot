@@ -1,11 +1,17 @@
 package ru.update.mayaboot;
 
 import android.app.Activity;
+
 import android.content.Intent;
+
 import android.net.Uri;
+
 import android.os.Bundle;
+
 import android.util.Log;
+
 import android.view.View;
+
 import android.widget.Button;
 
 public class MainActivity extends Activity {
@@ -45,8 +51,10 @@ public class MainActivity extends Activity {
         if (requestCode == FILE_SELECT_CODE && resultCode == Activity.RESULT_OK) {
             if (data != null && data.getData() != null) {
                 Uri uri = data.getData();
-                Log.d(LOG_TAG, "File choose, run ProcessingActivity with URI: " + uri.toString());
-
+    
+                final int takeFlags = Intent.FLAG_GRANT_READ_URI_PERMISSION;
+                getContentResolver().takePersistableUriPermission(uri, takeFlags);
+    
                 Intent intent = new Intent(this, ProcessingActivity.class);
                 intent.setData(uri);
                 startActivity(intent);

@@ -335,7 +335,7 @@ public class OpenJDK {
     /*
         Метод чтобы запустить jar файл, а не приложение
 
-        Да, дубляж кода, я говнокодер. И?
+        Да, дубляж кода, я говнокодер
     */
 
     public static String runJar(Context context, String jarName, List<String> args) {
@@ -373,7 +373,7 @@ public class OpenJDK {
         if (!jarFile.exists()) {
             Log.d(LOG_TAG, "JAR not found at " + jarPath + ". Unpacking from assets...");
             
-            if (!copyAssetToFile(context, jarName, jarFile)) {
+            if (!Utils.copyAssetToFile(context, jarName, jarFile.getAbsolutePath())) {
                 return "ERROR: Failed to unpack " + jarName + " from assets";
             }
 
@@ -424,45 +424,6 @@ public class OpenJDK {
             return (exitCode == 0)  ? output.toString() : "ERROR: Exit code " + exitCode + "\n" + output;
         } catch (Exception e) {
             return "Run error: " + e.getMessage();
-        }
-    }
-
-    /*
-        Вспомогательный метод: копирует файл из assets в указанное место
-
-        Буфер на 8192 (8 кб) для скорости
-    */
-
-    private static boolean copyAssetToFile(Context context, String assetPath, File dest) {
-        try (InputStream in = context.getAssets().open(assetPath);
-            OutputStream out = new FileOutputStream(dest)) {
-            
-            AssetManager am = context.getAssets();
-            try (InputStream testStream = am.open(assetPath)) {
-                if (testStream.available() == 0) {
-                    Log.e(LOG_TAG, "Asset file is empty: " + assetPath);
-                    return false;
-                }
-            }
-            
-            byte[] buffer = new byte[8192];
-            int bytesRead;
-            while ((bytesRead = in.read(buffer)) != -1) {
-                out.write(buffer, 0, bytesRead);
-            }
-            
-            dest.setReadable(true, false);
-            
-            Log.d(LOG_TAG, "Copied " + dest.length() + " bytes from " + assetPath + " to " + dest);
-            return true;           
-        } catch (IOException e) {
-            Log.e(LOG_TAG, "Failed to copy asset: " + assetPath, e);
-            
-            if (dest.exists()) {
-                dest.delete();
-            }
-
-            return false;
         }
     }
 
