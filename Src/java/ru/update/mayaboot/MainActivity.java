@@ -1,30 +1,56 @@
 package ru.update.mayaboot;
 
 import android.app.Activity;
+import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.View;
+import android.widget.Button;
 
 public class MainActivity extends Activity {
+    private static final String LOG_TAG = "MayaBoot_Main";
+    private static final int FILE_SELECT_CODE = 0;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        Log.d("MayaBoot_Main", "Starting installation check...");
-        OpenJDK.install(getApplicationContext());
+        Button importButton = findViewById(R.id.button_import_apk);
 
-        new Thread(new Runnable() {
+        importButton.setOnClickListener(new View.OnClickListener() {
             @Override
-            public void run() {
-                Log.d("MayaBoot_Main", "Installation complete. Running ping-pong test...");
-                String result = OpenJDK.run(getApplicationContext());
+            public void onClick(View v) {
+                Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+                intent.setType("application/vnd.android.package-archive");
+                intent.addCategory(Intent.CATEGORY_OPENABLE);
 
-                Log.d("MayaBoot_FINAL_RESULT", "========================================");
-                Log.d("MayaBoot_FINAL_RESULT", "              TEST COMPLETE             ");
-                Log.d("MayaBoot_FINAL_RESULT", "========================================");
-                Log.d("MayaBoot_FINAL_RESULT", "\n" + result); // \n для читаемости
-                Log.d("MayaBoot_FINAL_RESULT", "========================================");
+                try {
+                    startActivityForResult(
+                        Intent.createChooser(intent, "Выберите APK для импорта"),
+                        FILE_SELECT_CODE
+                    );
+                } catch (android.content.ActivityNotFoundException ex) {
+                    Log.e(LOG_TAG, "On device not found file manager", ex);
+                }
             }
-        }).start();
+        });
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+
+        if (requestCode == FILE_SELECT_CODE && resultCode == Activity.RESULT_OK) {
+            if (data != null && data.getData() != null) {
+                Uri uri = data.getData();
+                Log.d(LOG_TAG, "File choose, run ProcessingActivity with URI: " + uri.toString());
+
+                Intent intent = new Intent(this, ProcessingActivity.class);
+                intent.setData(uri);
+                startActivity(intent);
+            }
+        }
     }
 }
