@@ -53,6 +53,8 @@ public class OpenJDK {
 
     /*
         Устанавливает OpenJDK (копирует пакет из assets и распаковывает его в data/data)
+        2 пакета (OpenJDK.pkg и OpenJDK_lib.pkg) потому-что гитхаб пропускает максимум
+        100 мегабацт, а общий вес OpenJDK + допы для среды термукса = 130+ мегабайт
     */
 
     public static boolean install(Context context) {
@@ -327,6 +329,140 @@ public class OpenJDK {
             return "Bridge is work"; 
         } else {
             return "Bridge don't work";    
+        }
+    }
+
+    /*
+        Метод чтобы запустить jar файл, а не приложение
+
+        Да, дубляж кода, я говнокодер. И?
+    */
+
+    public static String runJar(Context context, String jarName, List<String> args) {
+        if (context == null){
+            return "ERROR: Context is null";
+        }
+
+        if (jarName == null || jarName.isEmpty()) {
+            return "ERROR: JAR name is empty";
+        }
+
+        File appFilesDir = context.getFilesDir();
+        if (appFilesDir == null) {
+            return "ERROR: getFilesDir() failed";
+        }
+
+        File jarDir = new File(appFilesDir, "home/jars");
+        if (!jarDir.exists() && !jarDir.mkdirs()) {
+            return "ERROR: Failed to create JAR dir: " + jarDir;
+        }
+
+        File jarFile = new File(jarDir, jarName);
+        String jarPath = jarFile.getAbsolutePath();
+
+        File javaExecutable = new File(appFilesDir, JAVA_EXECUTABLE_SUBPATH);
+        
+        if (!javaExecutable.exists()) {
+            return "ERROR: Java not found at " + javaExecutable;
+        }
+
+        if (!javaExecutable.canExecute()) {
+            javaExecutable.setExecutable(true);
+        }
+
+        if (!jarFile.exists()) {
+            Log.d(LOG_TAG, "JAR not found at " + jarPath + ". Unpacking from assets...");
+            
+            if (!copyAssetToFile(context, jarName, jarFile)) {
+                return "ERROR: Failed to unpack " + jarName + " from assets";
+            }
+
+            if (!jarFile.exists() || jarFile.length() == 0) {
+                jarFile.delete();
+                return "ERROR: Unpacked JAR is empty: " + jarPath;
+            }
+
+            jarFile.setReadable(true);
+            Log.d(LOG_TAG, "JAR unpacked to: " + jarPath);
+        }
+
+        Map<String, String> envMap = new HashMap<>();
+        envMap.put("HOME", new File(appFilesDir, "home").getAbsolutePath());
+        envMap.put("PREFIX", new File(appFilesDir, "usr").getAbsolutePath());
+        envMap.put("TMPDIR", new File(appFilesDir, "tmp").getAbsolutePath());
+        envMap.put("PATH", new File(appFilesDir, "usr/bin").getAbsolutePath() + ":" + System.getenv("PATH"));
+        envMap.put("LD_LIBRARY_PATH", new File(appFilesDir, "usr/lib").getAbsolutePath());
+
+        List<String> command = new ArrayList<>();
+        command.add("/system/bin/linker" + (android.os.Process.is64Bit() ? "64" : ""));
+        command.add(javaExecutable.getAbsolutePath());
+        command.add("-jar");
+        command.add(jarPath);
+        
+        if (args != null) {
+            command.addAll(args);
+        }
+
+        try {
+            ProcessBuilder pb = new ProcessBuilder(command);
+            pb.environment().putAll(envMap);
+            pb.redirectErrorStream(true);
+            
+            Log.d(LOG_TAG, "EXEC: " + String.join(" ", command));
+            Process process = pb.start();
+
+            StringBuilder output = new StringBuilder();
+            try (BufferedReader reader = new BufferedReader(
+                    new InputStreamReader(process.getInputStream()))) {       
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    output.append(line).append("\n");
+                }
+            }
+
+            int exitCode = process.waitFor();
+            return (exitCode == 0)  ? output.toString() : "ERROR: Exit code " + exitCode + "\n" + output;
+        } catch (Exception e) {
+            return "Run error: " + e.getMessage();
+        }
+    }
+
+    /*
+        Вспомогательный метод: копирует файл из assets в указанное место
+
+        Буфер на 8192 (8 кб) для скорости
+    */
+
+    private static boolean copyAssetToFile(Context context, String assetPath, File dest) {
+        try (InputStream in = context.getAssets().open(assetPath);
+            OutputStream out = new FileOutputStream(dest)) {
+            
+            AssetManager am = context.getAssets();
+            try (InputStream testStream = am.open(assetPath)) {
+                if (testStream.available() == 0) {
+                    Log.e(LOG_TAG, "Asset file is empty: " + assetPath);
+                    return false;
+                }
+            }
+            
+            byte[] buffer = new byte[8192];
+            int bytesRead;
+            while ((bytesRead = in.read(buffer)) != -1) {
+                out.write(buffer, 0, bytesRead);
+            }
+            
+            dest.setReadable(true, false);
+            
+            Log.d(LOG_TAG, "Copied " + dest.length() + " bytes from " + assetPath + " to " + dest);
+            return true;           
+        } catch (IOException e) {
+            Log.e(LOG_TAG, "Failed to copy asset: " + assetPath, e);
+            
+            if (dest.exists()) {
+                dest.delete();
+            }
+
+            return false;
         }
     }
 
