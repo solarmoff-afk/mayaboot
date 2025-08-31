@@ -1,18 +1,24 @@
 package ru.update.mayaui.widgets;
 
 import android.content.Context;
+
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
+
 import android.util.TypedValue;
+
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
+
 import android.widget.TextView;
+
 import ru.update.mayaui.DrawableInfo;
 import ru.update.mayaui.MNode;
 import ru.update.mayaui.VirtualResources;
+import ru.update.mayaui.StyleInfo;
 
 /*
     Это универсальный строитель для всех виджетов, он содержит все
@@ -21,6 +27,11 @@ import ru.update.mayaui.VirtualResources;
 
 public abstract class BaseWidgetBuilder implements IWidgetBuilder {
     protected View applyBaseAttributes(View view, MNode node, VirtualResources resources) {
+        String styleRef = node.attributes.get("style");
+        if (styleRef != null && styleRef.startsWith("@style/")) {
+            applyStyle(view, styleRef.substring(7), resources);
+        }
+        
         view.setLayoutParams(createLayoutParams(view.getContext(), node, resources));
         String backgroundRef = node.attributes.get("android:background");
         
@@ -30,44 +41,78 @@ public abstract class BaseWidgetBuilder implements IWidgetBuilder {
         
         return view;
     }
-    
+
+    private void applyStyle(View view, String styleName, VirtualResources resources) {
+        StyleInfo style = resources.styles.get(styleName);
+        if (style == null) {
+            return;
+        }
+
+        if (style.parent != null) {
+            String finalParentName = style.parent.substring(style.parent.lastIndexOf('/') + 1);
+            applyStyle(view, finalParentName, resources);
+        }
+
+        if (view instanceof TextView) {
+            applyTextViewAttributesFromStyle((TextView) view, style, resources);
+        }
+    }
+
     /*
         Обноявляем аттрибуты текста
     */
-
+    
     protected View applyTextViewAttributes(TextView view, MNode node, VirtualResources resources) {
         applyBaseAttributes(view, node, resources);
-        String textRef = node.attributes.get("android:text");
         
+        String textRef = node.attributes.get("android:text");
         if (textRef != null) {
             view.setText(resolveString(textRef, resources));
-        };
+        }
 
         String colorRef = node.attributes.get("android:textColor");
-
         if (colorRef != null) {
             view.setTextColor(resolveColor(colorRef, resources));
         }
 
         String sizeRef = node.attributes.get("android:textSize");
-        
         if (sizeRef != null) {
             view.setTextSize(TypedValue.COMPLEX_UNIT_PX, resolveDimen(sizeRef, view.getContext(), resources));
         }
 
         String gravity = node.attributes.get("android:gravity");
-        
         if (gravity != null) {
             view.setGravity(parseGravity(gravity));
         }
 
-        String style = node.attributes.get("android:textStyle");
-        
-        if (style != null && style.contains("bold")) {
+        String styleAttr = node.attributes.get("android:textStyle");
+        if (styleAttr != null && styleAttr.contains("bold")) {
             view.setTypeface(null, Typeface.BOLD);
         }
         
         return view;
+    }
+
+    private void applyTextViewAttributesFromStyle(TextView view, StyleInfo style, VirtualResources resources) {
+        String colorRef = style.items.get("android:textColor");
+        if (colorRef != null) {
+            view.setTextColor(resolveColor(colorRef, resources));
+        }
+        
+        String sizeRef = style.items.get("android:textSize");
+        if (sizeRef != null) {
+            view.setTextSize(TypedValue.COMPLEX_UNIT_PX, resolveDimen(sizeRef, view.getContext(), resources));
+        }
+
+        String gravity = style.items.get("android:gravity");
+        if (gravity != null) {
+            view.setGravity(parseGravity(gravity));
+        }
+
+        String styleAttr = style.items.get("android:textStyle");
+        if (styleAttr != null && styleAttr.contains("bold")) {
+            view.setTypeface(null, Typeface.BOLD);
+        }
     }
 
     /*
