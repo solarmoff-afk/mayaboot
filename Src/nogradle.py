@@ -309,11 +309,12 @@ def compile_java():
     ]
     
     subprocess.run([
-        str(JAVA_HOME / "javac"), 
+        str(JAVA_HOME / "bin" / "javac"), 
         "-d", str(CLASSES_DIR), 
         "-classpath", os.pathsep.join(map(str, classpath_items)), 
-        "-source", "1.8", 
-        "-target", "1.8", 
+        "-source", "1.8",
+        "-target", "1.8",
+        "-encoding", "UTF-8",
         *[str(f) for f in java_files]
     ], check=True)
 

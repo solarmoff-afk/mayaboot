@@ -74,6 +74,14 @@ python nogradle.py
 ```
 
 **Перед этим настройте local.properties!**
+```
+[DEFAULT]
+sdk.dir=СЮДА ПУТЬ К ANDROID/SDK, у меня это C:\Users\User\AppData\Local\Android\Sdk
+ndk.dir=СЮДА (ЕСЛИ ХОТИТЕ) ПУТЬ К ANDROID NDK, У МЕНЯ C:/Ndk
+java.home=ПУТЬ К JDK ИЛИ OPENJDK, ВАЖНО! ПУТЬ К КОРНЮ, то есть C:\OpenJDK\
+build.tools.version=Ваша версия Android SDK, у меня 35.0.0 
+android.platform=Тут тоже версия платформы, у меня 35
+```
 
 - Src/OpenJDK.java - Класс, в котором есть метод для установки (С защитой от zip skip), проверки установлен ли OpenJDK в data/data/.../files/ и запуска java -version для теста
 - MainActivity.java и MayaBootApp.java на будущее, MainActivity просто устаналивает OpenJDK и запускает
