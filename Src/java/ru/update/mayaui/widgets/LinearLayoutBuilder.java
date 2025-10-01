@@ -30,6 +30,11 @@ public class LinearLayoutBuilder extends BaseWidgetBuilder {
             view.setOrientation(LinearLayout.HORIZONTAL);
         }
 
+        String gravity = node.attributes.get("android:gravity");
+        if (gravity != null) {
+            view.setGravity(parseGravity(gravity));
+        }
+
         for (MNode child : node.children) {
             View childView = MayaUI.createView(context, child, resources);
             LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(childView.getLayoutParams());

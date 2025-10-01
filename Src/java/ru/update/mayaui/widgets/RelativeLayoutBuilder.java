@@ -1,13 +1,18 @@
 package ru.update.mayaui.widgets;
 
 import android.content.Context;
+
 import android.os.Build;
+
 import android.view.View;
 import android.view.ViewGroup;
+
 import android.widget.RelativeLayout;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.List;
+import java.util.ArrayList;
 
 import ru.update.mayaui.MayaUI;
 import ru.update.mayaui.MNode;
@@ -20,38 +25,36 @@ public class RelativeLayoutBuilder extends BaseWidgetBuilder {
         applyBaseAttributes(layout, node, resources);
 
         Map<String, View> viewIdMap = new HashMap<>();
-
+        List<View> childrenViews = new ArrayList<>();
+        
         for (MNode childNode : node.children) {
             View childView = MayaUI.createView(context, childNode, resources);
-
             childView.setId(View.generateViewId());
-
+            
             String idAttr = childNode.attributes.get("android:id");
             if (idAttr != null) {
                 String resourceId = idAttr.substring(idAttr.indexOf('/') + 1);
                 viewIdMap.put(resourceId, childView);
             }
-
-            layout.addView(childView);
+            
+            childrenViews.add(childView);
         }
 
-        for (int i = 0; i < layout.getChildCount(); i++) {
-            View childView = layout.getChildAt(i);
+        for (int i = 0; i < childrenViews.size(); i++) {
+            View childView = childrenViews.get(i);
             MNode childNode = node.children.get(i);
-
-            RelativeLayout.LayoutParams params = (RelativeLayout.LayoutParams) childView.getLayoutParams();
+            
+            RelativeLayout.LayoutParams params = (RelativeLayout.LayoutParams) createLayoutParams(context, childNode, resources);
 
             for (Map.Entry<String, String> attribute : childNode.attributes.entrySet()) {
                 String attrName = attribute.getKey();
                 String attrValue = attribute.getValue();
                 int rule = getRuleVerb(attrName);
 
-                if (rule == -1) {
-                    continue;
-                }
+                if (rule == -1) continue;
 
                 if (attrValue.startsWith("@id/")) {
-                    String targetId = attrValue.substring(4); // Убираем "@id/"
+                    String targetId = attrValue.substring(4);
                     View targetView = viewIdMap.get(targetId);
                     
                     if (targetView != null) {
@@ -64,7 +67,7 @@ public class RelativeLayoutBuilder extends BaseWidgetBuilder {
                 }
             }
             
-            childView.setLayoutParams(params);
+            layout.addView(childView, params);
         }
 
         return layout;
@@ -111,6 +114,65 @@ public class RelativeLayoutBuilder extends BaseWidgetBuilder {
     protected ViewGroup.LayoutParams createLayoutParams(Context context, MNode node, VirtualResources resources) {
         int width = parseLayoutSize(node.attributes.get("android:layout_width"), context, resources);
         int height = parseLayoutSize(node.attributes.get("android:layout_height"), context, resources);
-        return new RelativeLayout.LayoutParams(width, height);
+        
+        RelativeLayout.LayoutParams params = new RelativeLayout.LayoutParams(width, height);
+        
+        int marginLeft = 0;
+        int marginTop = 0;
+        int marginRight = 0;
+        int marginBottom = 0;
+        
+        String margin = node.attributes.get("android:layout_margin");
+        
+        if (margin != null) {
+            int m = (int) resolveDimen(margin, context, resources);
+            marginLeft = marginTop = marginRight = marginBottom = m;
+        }
+        
+        String marginH = node.attributes.get("android:layout_marginHorizontal");
+        if (marginH != null) {
+            int m = (int) resolveDimen(marginH, context, resources);
+            marginLeft = marginRight = m;
+        }
+
+        String marginV = node.attributes.get("android:layout_marginVertical");
+        if (marginV != null) {
+            int m = (int) resolveDimen(marginV, context, resources);
+            marginTop = marginBottom = m;
+        }
+        
+        String mLeft = node.attributes.get("android:layout_marginLeft");
+        if (mLeft != null) {
+            marginLeft = (int) resolveDimen(mLeft, context, resources);
+        }
+
+        String mStart = node.attributes.get("android:layout_marginStart");
+        if (mStart != null) {
+            marginLeft = (int) resolveDimen(mStart, context, resources);
+        }
+
+        String mTop = node.attributes.get("android:layout_marginTop");
+        if (mTop != null) {
+            marginTop = (int) resolveDimen(mTop, context, resources);
+        }
+
+        String mRight = node.attributes.get("android:layout_marginRight");
+        if (mRight != null) {
+            marginRight = (int) resolveDimen(mRight, context, resources);
+        }
+
+        String mEnd = node.attributes.get("android:layout_marginEnd");
+        if (mEnd != null) {
+            marginRight = (int) resolveDimen(mEnd, context, resources);
+        }
+
+        String mBottom = node.attributes.get("android:layout_marginBottom");
+        if (mBottom != null) {
+            marginBottom = (int) resolveDimen(mBottom, context, resources);
+        }
+
+        params.setMargins(marginLeft, marginTop, marginRight, marginBottom);
+        
+        return params;
     }
 }

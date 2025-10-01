@@ -248,6 +248,11 @@ public abstract class BaseWidgetBuilder implements IWidgetBuilder {
                     view.setEllipsize(TextUtils.TruncateAt.END); break;
             }
         }
+
+        String allCaps = node.attributes.get("android:textAllCaps");
+        if ("true".equalsIgnoreCase(allCaps)) {
+            view.setAllCaps(true);
+        }
         
         return view;
     }
@@ -348,6 +353,7 @@ public abstract class BaseWidgetBuilder implements IWidgetBuilder {
         
         switch (value) {
             case "match_parent":
+            case "fill_parent":
                 return ViewGroup.LayoutParams.MATCH_PARENT;
             
             case "wrap_content":
@@ -416,8 +422,13 @@ public abstract class BaseWidgetBuilder implements IWidgetBuilder {
             value = resources.dimens.getOrDefault(value.substring(7), "0dp");
         }
         
-        float numericalValue = Float.parseFloat(value.replaceAll("[^\\d.-]", ""));
+        String numericPart = value.replaceAll("[^\\d.-]", "");
+        if (numericPart.isEmpty()) {
+            return 0;
+        }
         
+        float numericalValue = Float.parseFloat(numericPart);
+
         /*
             Виртуальный пиксель, который используется для автоматической
             оптимизации под все экраны всех устройств. Его фишка

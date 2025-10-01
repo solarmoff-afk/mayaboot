@@ -96,12 +96,20 @@ public class ProcessingService extends Service {
                     
                     Log.d(LOG_TAG, OpenJDK.runJar(this, "apktool.jar", commandList));
 
-                    update("Task: Just test");
-                    Thread.sleep(1500);
+                    update("TASK: Launching Renderer...");
 
-                    update("\nDONE");
-                } catch (InterruptedException e) {
-                    update("ERROR: Procces terminate");
+                    Intent renderIntent = new Intent(this, RenderActivity.class);
+                    renderIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+
+                    renderIntent.putExtra(RenderActivity.EXTRA_DECOMPILED_PATH, outputDir.getAbsolutePath());
+                                        
+                    startActivity(renderIntent);
+                    Log.d(LOG_TAG, "RenderActivity started for path: " + outputDir.getAbsolutePath());
+                                        
+                    update("DONE");
+                // } catch (InterruptedException e) {
+                //     update("ERROR: Procces terminate");
+                //
                 } finally {
                     stopSelf();
                 }

@@ -1,6 +1,7 @@
 package ru.update.mayaui.widgets;
 
 import android.content.Context;
+import android.content.res.ColorStateList;
 
 import android.view.View;
 
@@ -33,6 +34,16 @@ public class ImageViewBuilder extends BaseWidgetBuilder {
                 case "fitXY": view.setScaleType(ImageView.ScaleType.FIT_XY); break;
                 case "matrix": view.setScaleType(ImageView.ScaleType.MATRIX); break;
             }
+        }
+
+        String tint = node.attributes.get("android:tint");
+        if (tint != null && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
+            view.setImageTintList(ColorStateList.valueOf(resolveColor(tint, resources)));
+        }
+
+        String adjustViewBounds = node.attributes.get("android:adjustViewBounds");
+        if ("true".equalsIgnoreCase(adjustViewBounds)) {
+            view.setAdjustViewBounds(true);
         }
 
         return view;
