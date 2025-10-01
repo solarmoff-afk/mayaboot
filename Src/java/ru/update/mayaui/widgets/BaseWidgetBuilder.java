@@ -13,6 +13,8 @@ import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
 
+import android.text.TextUtils;
+
 import android.widget.TextView;
 
 import ru.update.mayaui.DrawableInfo;
@@ -102,6 +104,23 @@ public abstract class BaseWidgetBuilder implements IWidgetBuilder {
             }
         }
 
+        String enabled = node.attributes.get("android:enabled");
+        if (enabled != null) {
+            view.setEnabled(Boolean.parseBoolean(enabled));
+        }
+
+        String alpha = node.attributes.get("android:alpha");
+        if (alpha != null) {
+            view.setAlpha(Float.parseFloat(alpha));
+        }
+
+        String elevation = node.attributes.get("android:elevation");
+        if (elevation != null) {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
+                view.setElevation(resolveDimen(elevation, view.getContext(), resources));
+            }
+        }
+
         view.setLayoutParams(createLayoutParams(view.getContext(), node, resources));
         String backgroundRef = node.attributes.get("android:background");
         
@@ -158,6 +177,51 @@ public abstract class BaseWidgetBuilder implements IWidgetBuilder {
         String styleAttr = node.attributes.get("android:textStyle");
         if (styleAttr != null && styleAttr.contains("bold")) {
             view.setTypeface(null, Typeface.BOLD);
+        }
+
+        Context context = view.getContext();
+        
+        Drawable dStart = resolveDrawable(node.attributes.get("android:drawableStart"), context, resources);
+        if (dStart == null) {
+            dStart = resolveDrawable(node.attributes.get("android:drawableLeft"), context, resources);
+        }
+
+        Drawable dTop = resolveDrawable(node.attributes.get("android:drawableTop"), context, resources);
+
+        Drawable dEnd = resolveDrawable(node.attributes.get("android:drawableEnd"), context, resources);
+        if (dEnd == null) {
+            dEnd = resolveDrawable(node.attributes.get("android:drawableRight"), context, resources);
+        }
+
+        Drawable dBottom = resolveDrawable(node.attributes.get("android:drawableBottom"), context, resources);
+
+        view.setCompoundDrawablesWithIntrinsicBounds(dStart, dTop, dEnd, dBottom);
+
+        String drawablePadding = node.attributes.get("android:drawablePadding");
+        if (drawablePadding != null) {
+            view.setCompoundDrawablePadding((int) resolveDimen(drawablePadding, context, resources));
+        }
+
+        String maxLines = node.attributes.get("android:maxLines");
+        if (maxLines != null) {
+            view.setMaxLines(Integer.parseInt(maxLines));
+        }
+
+        String ellipsize = node.attributes.get("android:ellipsize");
+        if (ellipsize != null) {
+            switch (ellipsize) {
+                case "start":
+                    view.setEllipsize(TextUtils.TruncateAt.START); break;
+                
+                case "middle":
+                    view.setEllipsize(TextUtils.TruncateAt.MIDDLE); break;
+                
+                case "marquee":
+                    view.setEllipsize(TextUtils.TruncateAt.MARQUEE); break;
+                
+                default: // end
+                    view.setEllipsize(TextUtils.TruncateAt.END); break;
+            }
         }
         
         return view;

@@ -39,6 +39,11 @@ public class LinearLayoutBuilder extends BaseWidgetBuilder {
                 params.weight = Float.parseFloat(weight);
             }
 
+            String layoutGravity = child.attributes.get("android:layout_gravity");
+            if (layoutGravity != null) {
+                params.gravity = parseGravity(layoutGravity);
+            }
+
             view.addView(childView, params);
         }
 
