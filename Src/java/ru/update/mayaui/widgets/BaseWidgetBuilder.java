@@ -121,6 +121,31 @@ public abstract class BaseWidgetBuilder implements IWidgetBuilder {
             }
         }
 
+        String minWidth = node.attributes.get("android:minWidth");
+        if (minWidth != null) {
+            view.setMinimumWidth((int) resolveDimen(minWidth, view.getContext(), resources));
+        }
+
+        String minHeight = node.attributes.get("android:minHeight");
+        if (minHeight != null) {
+            view.setMinimumHeight((int) resolveDimen(minHeight, view.getContext(), resources));
+        }
+
+        String clickable = node.attributes.get("android:clickable");
+        if (clickable != null) {
+            view.setClickable(Boolean.parseBoolean(clickable));
+        }
+
+        String focusable = node.attributes.get("android:focusable");
+        if (focusable != null) {
+            view.setFocusable(Boolean.parseBoolean(focusable));
+        }
+
+        String foreground = node.attributes.get("android:foreground");
+        if (foreground != null && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+            view.setForeground(resolveDrawable(foreground, view.getContext(), resources));
+        }
+
         view.setLayoutParams(createLayoutParams(view.getContext(), node, resources));
         String backgroundRef = node.attributes.get("android:background");
         
