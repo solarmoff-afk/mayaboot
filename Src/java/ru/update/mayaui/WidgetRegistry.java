@@ -19,11 +19,12 @@ public class WidgetRegistry {
         builders.put("EditText", new EditTextBuilder());
         builders.put("Switch", new SwitchBuilder());
         builders.put("ScrollView", new ScrollViewBuilder());
+        builders.put("ImageView", new ImageViewBuilder());
         builders.put("FrameLayout", new FrameLayoutBuilder());
         builders.put("LinearLayout", new LinearLayoutBuilder());
         builders.put("AbsoluteLayout", new AbsoluteLayoutBuilder());
         builders.put("GridLayout", new GridLayoutBuilder());
-        builders.put("ImageView", new ImageViewBuilder());
+        builders.put("RelativeLayout", new RelativeLayoutBuilder());
     }
 
     public static IWidgetBuilder getBuilder(String tag) {
