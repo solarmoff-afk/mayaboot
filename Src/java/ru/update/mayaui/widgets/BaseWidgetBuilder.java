@@ -31,7 +31,77 @@ public abstract class BaseWidgetBuilder implements IWidgetBuilder {
         if (styleRef != null && styleRef.startsWith("@style/")) {
             applyStyle(view, styleRef.substring(7), resources);
         }
+
+        int paddingLeft = view.getPaddingLeft();
+        int paddingTop = view.getPaddingTop();
+        int paddingRight = view.getPaddingRight();
+        int paddingBottom = view.getPaddingBottom();
+
+        String padding = node.attributes.get("android:padding");
+        if (padding != null) {
+            int p = (int) resolveDimen(padding, view.getContext(), resources);
+            paddingLeft = paddingTop = paddingRight = paddingBottom = p;
+        }
+
+        String paddingH = node.attributes.get("android:paddingHorizontal");
+        if (paddingH != null) {
+            int p = (int) resolveDimen(paddingH, view.getContext(), resources);
+            paddingLeft = paddingRight = p;
+        }
+
+        String paddingV = node.attributes.get("android:paddingVertical");
+        if (paddingV != null) {
+            int p = (int) resolveDimen(paddingV, view.getContext(), resources);
+            paddingTop = paddingBottom = p;
+        }
+
+        String pLeft = node.attributes.get("android:paddingLeft");
+        if (pLeft != null) {
+            paddingLeft = (int) resolveDimen(pLeft, view.getContext(), resources);
+        }
+
+        String pStart = node.attributes.get("android:paddingStart");
+        if (pStart != null) {
+            paddingLeft = (int) resolveDimen(pStart, view.getContext(), resources);
+        }
+
+        String pTop = node.attributes.get("android:paddingTop");
+        if (pTop != null) {
+            paddingTop = (int) resolveDimen(pTop, view.getContext(), resources);
+        }
+
+        String pRight = node.attributes.get("android:paddingRight");
+        if (pRight != null) {
+            paddingRight = (int) resolveDimen(pRight, view.getContext(), resources);
+        }
+
+        String pEnd = node.attributes.get("android:paddingEnd");
+        if (pEnd != null) {
+            paddingRight = (int) resolveDimen(pEnd, view.getContext(), resources);
+        }
+
+        String pBottom = node.attributes.get("android:paddingBottom");
+        if (pBottom != null) {
+            paddingBottom = (int) resolveDimen(pBottom, view.getContext(), resources);
+        }
+
+        view.setPadding(paddingLeft, paddingTop, paddingRight, paddingBottom);
         
+        String visibility = node.attributes.get("android:visibility");
+        if (visibility != null) {
+            switch (visibility) {
+                case "gone":
+                    view.setVisibility(View.GONE);
+                    break;
+                case "invisible":
+                    view.setVisibility(View.INVISIBLE);
+                    break;
+                default: // visible
+                    view.setVisibility(View.VISIBLE);
+                    break;
+            }
+        }
+
         view.setLayoutParams(createLayoutParams(view.getContext(), node, resources));
         String backgroundRef = node.attributes.get("android:background");
         
@@ -124,6 +194,63 @@ public abstract class BaseWidgetBuilder implements IWidgetBuilder {
         int width = parseLayoutSize(node.attributes.get("android:layout_width"), context, resources);
         int height = parseLayoutSize(node.attributes.get("android:layout_height"), context, resources);
         
+        ViewGroup.MarginLayoutParams params = new ViewGroup.MarginLayoutParams(width, height);
+
+        int marginLeft = 0;
+        int marginTop = 0;
+        int marginRight = 0;
+        int marginBottom = 0;
+
+        String margin = node.attributes.get("android:layout_margin");
+        if (margin != null) {
+            int m = (int) resolveDimen(margin, context, resources);
+            marginLeft = marginTop = marginRight = marginBottom = m;
+        }
+
+        String marginH = node.attributes.get("android:layout_marginHorizontal");
+        if (marginH != null) {
+            int m = (int) resolveDimen(marginH, context, resources);
+            marginLeft = marginRight = m;
+        }
+
+        String marginV = node.attributes.get("android:layout_marginVertical");
+        if (marginV != null) {
+            int m = (int) resolveDimen(marginV, context, resources);
+            marginTop = marginBottom = m;
+        }
+        
+        String mLeft = node.attributes.get("android:layout_marginLeft");
+        if (mLeft != null) {
+            marginLeft = (int) resolveDimen(mLeft, context, resources);
+        }
+
+        String mStart = node.attributes.get("android:layout_marginStart");
+        if (mStart != null) {
+            marginLeft = (int) resolveDimen(mStart, context, resources);
+        }
+
+        String mTop = node.attributes.get("android:layout_marginTop");
+        if (mTop != null) {
+            marginTop = (int) resolveDimen(mTop, context, resources);
+        }
+
+        String mRight = node.attributes.get("android:layout_marginRight");
+        if (mRight != null) {
+            marginRight = (int) resolveDimen(mRight, context, resources);
+        }
+
+        String mEnd = node.attributes.get("android:layout_marginEnd");
+        if (mEnd != null) {
+            marginRight = (int) resolveDimen(mEnd, context, resources);
+        }
+
+        String mBottom = node.attributes.get("android:layout_marginBottom");
+        if (mBottom != null) {
+            marginBottom = (int) resolveDimen(mBottom, context, resources);
+        }
+
+        params.setMargins(marginLeft, marginTop, marginRight, marginBottom);
+
         return new ViewGroup.LayoutParams(width, height);
     }
 

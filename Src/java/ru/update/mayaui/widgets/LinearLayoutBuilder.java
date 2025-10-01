@@ -1,7 +1,10 @@
 package ru.update.mayaui.widgets;
 
 import android.content.Context;
+
 import android.view.View;
+import android.view.ViewGroup;
+
 import android.widget.LinearLayout;
 
 import ru.update.mayaui.MayaUI;
@@ -28,7 +31,15 @@ public class LinearLayoutBuilder extends BaseWidgetBuilder {
         }
 
         for (MNode child : node.children) {
-            view.addView(MayaUI.createView(context, child, resources));
+            View childView = MayaUI.createView(context, child, resources);
+            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(childView.getLayoutParams());
+
+            String weight = child.attributes.get("android:layout_weight");
+            if (weight != null) {
+                params.weight = Float.parseFloat(weight);
+            }
+
+            view.addView(childView, params);
         }
 
         return view;
