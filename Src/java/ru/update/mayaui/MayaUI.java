@@ -3,13 +3,17 @@ package ru.update.mayaui;
 import android.content.Context;
 import android.util.Log;
 import android.view.View;
+import android.view.ViewGroup;
+
 import org.xmlpull.v1.XmlPullParser;
 import org.xmlpull.v1.XmlPullParserFactory;
+
 import java.io.File;
 import java.io.FileReader;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Stack;
+
 import ru.update.mayaui.widgets.IWidgetBuilder;
 
 /*
@@ -100,7 +104,7 @@ public class MayaUI {
         детей который были виртуализированы до старта приложения 
     */
 
-    public View build(Context context, String layoutName) {
+    public MayaLayoutResult build(Context context, String layoutName) {
         MNode rootNode = layouts.get(layoutName);
         
         if (rootNode == null) {
@@ -108,17 +112,49 @@ public class MayaUI {
             return null;
         }
 
-        return createView(context, rootNode, resources);
+        Map<String, View> viewMap = new HashMap<>();
+        View rootView = createViewRecursive(context, rootNode, resources, viewMap);
+
+        return new MayaLayoutResult(rootView, viewMap);
     }
 
+    /*
+        Теперь это просто обёртка для обратной совместимости,
+        press f молодому
+    */
+
     public static View createView(Context context, MNode node, VirtualResources resources) {
+        return createViewRecursive(context, node, resources, new HashMap<>());
+    }
+
+    private static View createViewRecursive(Context context, MNode node, VirtualResources resources, Map<String, View> viewMap) {
         IWidgetBuilder builder = WidgetRegistry.getBuilder(node.tag);
-        
+        View view;
+
         if (builder != null) {
-            return builder.build(context, node, resources);
+            view = builder.build(context, node, resources);
         } else {
-            Log.w(LOG_TAG, "No builder found for tag: " + node.tag + ". Creating a placeholder View.");
-            return new View(context);
+            Log.w(LOG_TAG, "No found builder suka blyat for teeeg " + node.tag);
+            view = new View(context);
         }
+
+        String idAttr = node.attributes.get("android:id");
+        if (idAttr != null) {
+            String resourceId = idAttr.substring(idAttr.indexOf('/') + 1);
+            viewMap.put(resourceId, view);
+        }
+
+        if (view instanceof ViewGroup) {
+            ViewGroup viewGroup = (ViewGroup) view;
+            
+            if (viewGroup.getChildCount() == 0) { 
+                for (MNode childNode : node.children) {
+                    View childView = createViewRecursive(context, childNode, resources, viewMap);
+                    viewGroup.addView(childView);
+                }
+            }
+        }
+        
+        return view;
     }
 }

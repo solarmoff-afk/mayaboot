@@ -22,4 +22,5 @@ public class MNode {
     public final String tag;
     public final Map<String, String> attributes = new HashMap<>();
     public final List<MNode> children = new ArrayList<>();
+    public String id;
 }

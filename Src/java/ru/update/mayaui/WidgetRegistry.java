@@ -22,6 +22,7 @@ public class WidgetRegistry {
         builders.put("ImageView", new ImageViewBuilder());
         builders.put("ProgressBar", new ProgressBarBuilder());
         builders.put("SeekBar", new SeekBarBuilder());
+        builders.put("ListView", new ListViewBuilder());
 
         builders.put("FrameLayout", new FrameLayoutBuilder());
         builders.put("LinearLayout", new LinearLayoutBuilder());
